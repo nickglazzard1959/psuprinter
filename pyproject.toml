@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "psuprinter"
+version = "0.2.0"
+description = "Emulated printer for CDC Printer Support Utility on DtCyber"
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["PSU", "retrocomputing"]
+license = {file = "LICENSE"}
+
+authors = [
+{name = "Nick Glazzard", email = "nick@hccc.org.uk"}
+]
+
+maintainers = [
+{name = "Nick Glazzard", email = "nick@hccc.org.uk"}
+]
+
+classifiers = ["Development Status :: 4 - Beta",
+               "Intended Audience :: Science/Research",
+               "License :: OSI Approved :: MIT License",
+               "Operating System :: POSIX :: Linux",
+               "Operating System :: MacOS :: MacOS X",
+               "Programming Language :: Python :: 3",
+              ]
+
+dependencies = [
+               ]
+
+[project.scripts]
+psuprinter = "psuprinter:main"
+
+[tool.setuptools]
+packages = ["psuprinter"]
+
+[tool.setuptools.package-data]
+gterm = ['lp2pdf.sh'
+        ]
