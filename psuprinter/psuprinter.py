@@ -191,7 +191,19 @@ class psu_printer( object ):
         filen,ext = os.path.splitext(self.file_name)
         outpdffile = filen + '.pdf'
         outpdfpath = os.path.join(outpdfdir, outpdffile)
-        cmd = ['./lp2pdf.sh', self.path_name, outpdfpath]
+        topdfpgm = os.path.join(os.path.dirname(__file__),'text2pdf.py')
+        cmd = [ 'python',
+                topdfpgm,            # Conversion program file name.
+                self.path_name,      # Input ASCII text file name.
+                '-L',                # Landscape mode.
+                '-c', '137',         # Characters per line.
+                '-l', '67',          # Lines per page.
+                '-F',                # Use ^L to signal a page break.
+                '-s', '8',           # Font size (points).
+                '-v', '8',           # Line spacing.
+                '-q',                # Quiet mode.
+                '-f', 'Courier',     # Font to use.
+                '-o', outpdfpath]    # Output PDF file name.
         try:
             retstring = subprocess.check_output(cmd, universal_newlines=True)
             print('INFO: created PDF output file:',outpdfpath)

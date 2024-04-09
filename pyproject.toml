@@ -31,11 +31,7 @@ dependencies = [
                ]
 
 [project.scripts]
-psuprinter = "psuprinter:main"
+psuprinter = "psuprinter.psuprinter:main"
 
 [tool.setuptools]
 packages = ["psuprinter"]
-
-[tool.setuptools.package-data]
-gterm = ['lp2pdf.sh'
-        ]
