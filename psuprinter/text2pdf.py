@@ -110,7 +110,7 @@ class PyText2Pdf(object):
     
     def __init__(self):
         # version number
-        self._version="1.3"
+        self._version="2.0"
         # iso encoding flag
         self._IsoEnc = False
         # formfeeds flag
@@ -126,6 +126,7 @@ class PyText2Pdf(object):
         self._lines = 0
         # number of characters in a row
         self._cols = 80
+        self._trunc = 80
         self._columns = 1
         # page ht
         self._pageHt = 792
@@ -185,7 +186,8 @@ class PyText2Pdf(object):
         parser.add_option('-s','--size',dest='fontsize',help='Use font at PTSIZE points (default=>10)',metavar='PTSIZE',default=10)
         parser.add_option('-v','--linespace',dest='linespace',help='Use line spacing LINESPACE (default 12)',metavar='LINESPACE',default=12)
         parser.add_option('-l','--lines',dest='lines',help='Lines per page (default 60, determined automatically if unspecified)',default=60, metavar=None)
-        parser.add_option('-c','--chars',dest='chars',help='Maximum characters per line (default 80)',default=80,metavar=None)
+        parser.add_option('-c','--chars',dest='chars',help='Maximum characters per line before wrapping (default 80)',default=80,metavar=None)
+        parser.add_option('-T','--trunc',dest='trunc',help='Maximum characters per line before truncation (default 80)',default=80,metavar=None)
         parser.add_option('-t','--tab',dest='tabspace',help='Spaces per tab character (default 4)',default=4,metavar=None)
         parser.add_option('-F','--useff',dest='formfeed',help='Use formfeed character ^L (i.e. accept formfeed characters as page breaks)',default=False,action='store_true')
         parser.add_option('-G','--greenbar',dest='greenbar',help='Add green bar background.',default=False,action='store_true')
@@ -241,6 +243,10 @@ class PyText2Pdf(object):
         chars = int(d.get('chars'))
         if chars < 4: chars = 4
         self._cols = chars
+
+        trunc = int(d.get('trunc'))
+        if trunc < 4: trunc = 4
+        self._trunc = trunc
 
         tab = int(d.get('tabspace'))
         if tab < 1: tab = 1
@@ -360,8 +366,11 @@ class PyText2Pdf(object):
         title = self._ifile
 
         # Use PDF 1.4
-        t=time.localtime()
-        timestr=str(time.strftime("D:%Y%m%d%H%M%S", t))
+        t = time.localtime()
+        utc_offset = time.strftime("%z", t)
+        utc_offset_pdf = utc_offset[:3] + "'" + utc_offset[3:] + "'"
+        timestr = time.strftime("D:%Y%m%d%H%M%S", t) + utc_offset_pdf
+        # print('timestr =', timestr)
         ws("%PDF-1.4\n")
 
         # Output required dictionaries.
@@ -487,7 +496,7 @@ class PyText2Pdf(object):
         buf = "".join(("/F1 ", str(self._ptSize), " Tf\n")) # Font size
         ws(buf)
         buf = "".join(("1 0 0 1 50 ", str(self._pageHt - 40), " Tm\n")) # Text matrix
-        #buf = "".join(("1 0 0 1 50 ", str(self._pageHt - 112), " Tm\n")) # Text matrix
+        #buf = "".join(("1 0 0 1 50 ", str(self._pageHt - 112), " Tm\n")) # Text matrix 
         ws(buf)
         buf = "".join((str(self._vertSpace), " TL\n")) # Text leading (distance vertically between lines).
         ws(buf)
@@ -570,46 +579,55 @@ class PyText2Pdf(object):
                 # Bars.
                 barMargin = 30
                 barLines = 3
-                gbuf = '%d w 0.8 1.0 0.8 RG\n'%(barLines * 9) #self._vertSpace) # Line with width = bar height.
+                gbuf = '%d w 0.8 1.0 0.8 RG\n'%(barLines * self._vertSpace) # Line with width = bar height.
                 ws(gbuf)
-                ypos = 4 * 9 - (9/4-1)
-                #ypos = (4 * self._vertSpace - (self._vertSpace/4-1)) * (9.0 / self._vertSpace)
-                for gline in range(barLines,60+1): #self._lines+1):
+                ypos = 4 * self._vertSpace
+                if self._landscape:
+                    ypos -= (self._vertSpace/4-1)
+                else:
+                    ypos += (self._vertSpace/3)
+                    if self._vertSpace == 6:
+                        ypos += 2
+                #print('ypos =', ypos, self._vertSpace)
+                for gline in range(barLines,self._lines+8):
                     if((gline%(barLines * 2))==0): # Draw a bar (i.e. a line).
                         gbuf = '%d %d m %d %d l S\n'%(barMargin,ypos,self._pageWd-barMargin,ypos)
                         ws(gbuf)
-                    ypos += 9 #self._vertSpace
+                    ypos += self._vertSpace
 
                 # HCCC text.
-                ypos += (barLines-1) * 9
-                xpos = 30
-                gbuf='3 w %d %d m %d %d l S\n'%(xpos,ypos,xpos,ypos+27)
-                ws(gbuf)
-                gbuf='%d %d m %d %d l S\n'%(xpos,ypos+13,xpos+18,ypos+13)
-                ws(gbuf)
-                gbuf='%d %d m %d %d l S\n'%(xpos+18,ypos,xpos+18,ypos+27)
-                ws(gbuf)
-                for hchar in range(1,4):
-                    xpos += 26
-                    gbuf='%d %d m %d %d l S\n'%(xpos,ypos,xpos,ypos+27)
+                if False:
+                    ypos += (barLines-1) * self._vertSpace
+                    xpos = 30
+                    gbuf='3 w %d %d m %d %d l S\n'%(xpos,ypos,xpos,ypos+27)
                     ws(gbuf)
-                    gbuf='%d %d m %d %d l S\n'%(xpos,ypos+1,xpos+18,ypos+1)
+                    gbuf='%d %d m %d %d l S\n'%(xpos,ypos+13,xpos+18,ypos+13)
                     ws(gbuf)
-                    gbuf='%d %d m %d %d l S\n'%(xpos,ypos+26,xpos+18,ypos+26)
+                    gbuf='%d %d m %d %d l S\n'%(xpos+18,ypos,xpos+18,ypos+27)
                     ws(gbuf)
+                    for hchar in range(1,4):
+                        xpos += 26
+                        gbuf='%d %d m %d %d l S\n'%(xpos,ypos,xpos,ypos+27)
+                        ws(gbuf)
+                        gbuf='%d %d m %d %d l S\n'%(xpos,ypos+1,xpos+18,ypos+1)
+                        ws(gbuf)
+                        gbuf='%d %d m %d %d l S\n'%(xpos,ypos+26,xpos+18,ypos+26)
+                        ws(gbuf)
 
                 # Tractor holes.
                 tractMargin = 15
-                gbuf = '%d w 0.3 0.3 0.3 RG\n'%(9) #(self._vertSpace)
+                gbuf = '%d w 0.3 0.3 0.3 RG\n'%(self._vertSpace)
                 ws(gbuf)
-                ypos = 4 * 9 - (9/4-1)
-                #ypos = 4 * self._vertSpace - (self._vertSpace/4-1)
-                #ypos = (4 * self._vertSpace - (self._vertSpace/4-1)) * (9.0 / self._vertSpace)
-                for gline in range(0,60+2): #self._lines+2):
+                ypos = 4 * self._vertSpace
+                if self._landscape:
+                    ypos -= (self._vertSpace/4-1)
+                else:
+                    ypos += (self._vertSpace/3)                    
+                for gline in range(0,self._lines+2):
                     if((gline%4)==0):
                         self.pdfellipse(tractMargin,ypos,1,1)
                         self.pdfellipse(self._pageWd-tractMargin,ypos,1,1)
-                    ypos += 9 #self._vertSpace
+                    ypos += self._vertSpace
 
             # Loop over print columns of page (1 or 2).
             while column <= self._columns:
@@ -620,7 +638,7 @@ class PyText2Pdf(object):
                 # Special flag for regexp page break
                 pagebreak = False
 
-                # Loop over lines of page or print column.
+                # Loop over lines of page for print column.
                 while lineNo < self._lines and not atFF and not atEOF and not pagebreak:
                     
                     # Start new output line.
@@ -629,7 +647,7 @@ class PyText2Pdf(object):
                     charNo = 0
                     ch = ''
 
-                    # Loop over characters of line.
+                    # Loop over characters of line allowed before possibly wrapping to the next line..
                     while charNo < self._cols:
                         charNo += 1
                         ch = _bytestostr(self._ifs.read(1))
@@ -639,16 +657,17 @@ class PyText2Pdf(object):
                         if breakcond:
                             break
 
-                        # Output printing character.
+                        # Output printing character. Escape parentheses and backslashes.
                         if ord(ch) >= 32 and ord(ch) <= 127:
-                            if ch == '(' or ch == ')' or ch == '\\':
-                                linebuf += "\\"
-                            linebuf += ch
+                            if charNo <= self._trunc:
+                                if ch == '(' or ch == ')' or ch == '\\':
+                                    linebuf += "\\"
+                                linebuf += ch
                             
                         else:
                             # Deal with some format effectors and non-printing characters.
                             if ord(ch) == 9:  # tab
-                                padding =self._tab - ((charNo - 1) % self._tab)
+                                padding = self._tab - ((charNo - 1) % self._tab)
                                 for i in range(padding):
                                     linebuf += " "
                                 charNo += (padding -1)

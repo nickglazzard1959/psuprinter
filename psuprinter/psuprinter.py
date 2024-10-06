@@ -48,28 +48,39 @@ class psu_printer( object ):
 
     def __init__(self, outdir, hostname, port=2552, debug=False):
         """
-        Create a printer, connect to PSU on hostname:port, then parse the
-        PSU output, creating files in outdir.
+        Create a printer, connect to PSU on hostname:port.
         """
+        super(psu_printer,self).__init__()
+
+        # Current state codes.
         self.UNCONNECTED = 1
         self.CONNECTED = 2
         self.LOGGING_IN = 3
         self.LOGGED_IN = 4
         self.BANNER_PARSED = 5
         self.FILE_DONE = 6
-    
-        super(psu_printer,self).__init__()
+
+        # Primary options.
         self.debug = debug
         self.outdir = outdir
         self.hostname = hostname
         self.port = port
+
+        # Secondary PDF options.
+        self.landscape = True
+        self.greenbar = False
+        self.economy = False
 
         # Initial state.
         self.old_state = 0
         self.state = self.UNCONNECTED
         self.clear_parsed_items()
 
-        # Loop responding to state.
+    def process_print_jobs(self):
+        """
+        Loop, maintaining and responding to state.
+        Parse the PSU output, creating files in outdir.
+        """
         while True:
             self.print_state()
 
@@ -193,25 +204,47 @@ class psu_printer( object ):
         outpdfpath = os.path.join(outpdfdir, outpdffile)
         topdfpgm = os.path.join(os.path.dirname(__file__),'text2pdf.py')
         cmd = [ 'python',
-                topdfpgm,            # Conversion program file name.
-                self.path_name,      # Input ASCII text file name.
-                '-L',                # Landscape mode.
-                '-c', '137',         # Characters per line.
-                '-l', '67',          # Lines per page.
-                '-F',                # Use ^L to signal a page break.
-                '-s', '8',           # Font size (points).
-                '-v', '8',           # Line spacing.
-                '-q',                # Quiet mode.
-                '-f', 'Courier',     # Font to use.
-                '-o', outpdfpath]    # Output PDF file name.
+                topdfpgm,             # Conversion program file name.
+                self.path_name,       # Input ASCII text file name.
+                '-c', '137',          # Characters per line before wrapping.
+                '-T', '137',          # Characters per line before truncation.
+                '-l', '67',           # Lines per page.
+                '-F',                 # Use ^L to signal a page break.
+                '-s', '8',            # Font size (points).
+                '-v', '8',            # Line spacing.
+                '-q',                 # Quiet mode.
+                '-A', 'CDC Printer Support Utility',
+                '-S', 'CDC NOS 2 Output',
+                '-f', 'Courier-Bold', # Font to use. Non-bold looks a bit "thin".
+                '-o', outpdfpath]     # Output PDF file name.
+        if self.economy:
+            cmd.append( '-v' )        # In economy mode, space lines by 6 units.
+            cmd.append( '6' )
+            cmd.append( '-l' )        # ... change page length to match.
+            cmd.append( '89' )
+        if self.landscape:
+            cmd.append( '-L' )        # Landscape mode.
+        else:
+            cmd.append( '-l')         # Portrait mode.
+            if self.economy:
+                cmd.append( '117' )   # ... change to 117 lines per page in economy mode.
+            else:
+                cmd.append( '88' )    # ... change to 88 lines per page in normal mode.
+            cmd.append( '-T' )        # ... truncate after 102 chars without wrapping.
+            cmd.append( '102' )       # ... still use -c characters for line movement logic.
+        if self.greenbar:
+            cmd.append( '-G' )        # Greenbar paper mode.
         try:
             retstring = subprocess.check_output(cmd, universal_newlines=True)
             print('INFO: created PDF output file:',outpdfpath)
+            print(retstring)
             return True
         except Exception as e:
             print('lp2pdf run failed. Reason:', e)
             print(' cmd was:',cmd)
             return False
+        
+        return True
 
     def find_login_marker(self, stringdata):
         """
@@ -298,9 +331,9 @@ class psu_printer( object ):
                 self.path_name = os.path.join(self.outdir, self.file_name)
                 self.fout = open(self.path_name, 'w')
                 if self.fout is not None:
-                    print('\nINFO: created output file:',self.path_name)
+                    print('\nINFO: created output file:',self.path_name,flush=True)
                 else:
-                    print('ERROR: failed to create output file:',self.path_name)
+                    print('ERROR: failed to create output file:',self.path_name,flush=True)
 
                 # If pre-open banner page lines have been accumulated, write them out first.
                 if len(self.banner_buffer) > 0:
@@ -357,7 +390,17 @@ def main_core():
     parser.add_argument("host", help="Host to connect to.")
     parser.add_argument("outdir", help="Output directory.")
     parser.add_argument("--debug", "-d", help="Print debug information.", action='store_true')
+    parser.add_argument("--port", help="TCP port for PSU (def:2552).")
+    parser.add_argument("--portrait", help="Portrait mode printing (def:landscape).", action='store_true')
+    parser.add_argument("--greenbar", help="Greenbar paper background (def:plain).", action='store_true')
+    parser.add_argument("--economy", help="Reduce space between lines to save paper.", action='store_true')
+    
     args = parser.parse_args()
+
+    if args.port is None:
+        port = 2552
+    else:
+        port = args.port
 
     if not os.access(args.outdir, os.F_OK):
         try:
@@ -366,7 +409,13 @@ def main_core():
             print('Cannot create:', args.outdir, 'Reason:', e)
             sys.exit(1)
             
-    printer = psu_printer(args.outdir, args.host, debug=args.debug)
+    printer = psu_printer(args.outdir, args.host, debug=args.debug, port=port)
+
+    printer.landscape = not args.portrait
+    printer.greenbar = args.greenbar
+    printer.economy = args.economy
+    
+    printer.process_print_jobs()
 
 def main():
     try:
@@ -375,6 +424,5 @@ def main():
         print('\nExiting PSUprinter.')
         sys.exit(1)    
             
-
 if __name__ == "__main__":
     main()
