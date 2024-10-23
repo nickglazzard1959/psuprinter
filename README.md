@@ -177,3 +177,8 @@ INFO: created PDF output file: spool/PDF/NICK.AAJA.AAGC.24_10_06.14_11_18.pdf
 INFO: output completed.
 ```
 
+## Acknowledgement
+
+The plain text to PDF conversion is done by a highly modified version of Anand B. Pillai's
+pyText2Pdf Python 2 script. The original (?) version of this can be found 
+[here](https://gist.github.com/anonymous/4410965).

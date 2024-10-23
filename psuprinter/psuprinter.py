@@ -14,6 +14,9 @@ import unicodedata
 import re
 
 def remove_control_characters(s):
+    """
+    Get rid of ANSI escape sequences and other unwanted characters.
+    """
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     result = ansi_escape.sub('', s)
     return "".join(ch for ch in result if unicodedata.category(ch)[0]!="C")
@@ -74,6 +77,7 @@ class psu_printer( object ):
         # Initial state.
         self.old_state = 0
         self.state = self.UNCONNECTED
+        self.twait = 5
         self.clear_parsed_items()
 
     def process_print_jobs(self):
@@ -92,7 +96,9 @@ class psu_printer( object ):
                 while self.state == self.UNCONNECTED:
                     self.psu = self.connect_to_psu()
                     if self.psu is None:
-                        time.sleep(5)
+                        print('INFO: Waiting', self.twait, 'seconds before trying to connect again.')
+                        time.sleep(self.twait)
+                        self.twait = min(2*self.twait, 200)
                     else:
                         self.state = self.CONNECTED
                         
@@ -106,6 +112,11 @@ class psu_printer( object ):
                     # If we didn't get any bytes, the connection has closed.
                     if len(bytedata) == 0:
                         self.state == self.UNCONNECTED
+                        try:
+                            self.psu.close()
+                        except Exception as e:
+                            print('ERROR: psu.close(): failed, reason:', e)
+                        print('INFO: Host has closed the connection.')
                         time.sleep(5)
                         break
 
@@ -145,7 +156,7 @@ class psu_printer( object ):
             sock.connect((self.hostname, self.port))
             return sock
         except Exception as e:
-            print('connect_to_psu(): failed, reason:', e)
+            print('ERROR: connect_to_psu(): failed, reason:', e)
             return None
 
     def print_state(self):
