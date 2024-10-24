@@ -94,6 +94,7 @@ class psu_printer( object ):
                 
                 # Connect to PSU.
                 while self.state == self.UNCONNECTED:
+                    print('INFO: Attempting to connect to host.')
                     self.psu = self.connect_to_psu()
                     if self.psu is None:
                         print('INFO: Waiting', self.twait, 'seconds before trying to connect again.')
@@ -109,16 +110,15 @@ class psu_printer( object ):
                     self.print_state()
                     bytedata = self.psu.recv(2048)
 
-                    # If we didn't get any bytes, the connection has closed.
+                    # If we didn't get any bytes, the connection has closed. Exit.
                     if len(bytedata) == 0:
                         self.state == self.UNCONNECTED
                         try:
                             self.psu.close()
                         except Exception as e:
                             print('ERROR: psu.close(): failed, reason:', e)
-                        print('INFO: Host has closed the connection.')
-                        time.sleep(5)
-                        break
+                        print('INFO: Host has closed the connection. Exiting.')
+                        sys.exit(0)
 
                     # Process the received data according to the current state.
                     # Each "state processor" should eat as much of the input data as possible.

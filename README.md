@@ -182,3 +182,29 @@ INFO: output completed.
 The plain text to PDF conversion is done by a highly modified version of Anand B. Pillai's
 pyText2Pdf Python 2 script. The original (?) version of this can be found 
 [here](https://gist.github.com/anonymous/4410965).
+
+## Alternatives
+
+The PDF output is not very flexible. It also doesn't understand the "extended" format effectors
+(column 1 characters) CDC uses to do various tricks with listings (especially in banner pages).
+It only understands page eject and overprint.
+
+There are now two alternative plain text to PDF converters which are more flexible and/or
+understand extended format effectors:
+
+- [virtual1403](https://github.com/racingmars/virtual1403) by Matthew R. Wilson. This is very
+  widely used in the retrocomputing world, especially by IBM mainframe aficionados. It is a mature
+  and polished program written in Go. The CDC extended format effectors have been added to it
+  by William Schaub. 
+- [lp2pdf](https://github.com/AndrewHastings/lp2pdf/blob/master/lp2pdf) by Andrew Hastings. This
+  is a Perl program that understands the CDC extended format effectors and can also simulate
+  DECWriter III and Teletype 33 devices.
+  
+Both of these can use various fonts that are more appropriate than Courier-Bold to the task of
+mimicking a line printer.
+
+It is likely that either could replace the supplied text to PDF program quite easily, as the
+current program is simply run "as a command" using Python's subprocess module. The lp2pdf
+program could certainly be used in this way.
+
+
