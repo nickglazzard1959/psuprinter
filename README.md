@@ -47,8 +47,8 @@ Other optional arguments are:
 * --debug : Output debug information. Hopefully not needed!
 * --port : TCP port for PSU on the host to connect to. Default is 2552.
 * --portrait : PDF output is landscape by default. Switch to portrait instead.
-* -- greenbar : Use a greenbar paper background instead of plain white in the PDF output.
-* -- economy : Squeeze more lines on a PDF page, with 6 units between lines instead of 8.
+* --greenbar : Use a greenbar paper background instead of plain white in the PDF output.
+* --economy : Squeeze more lines on a PDF page, with 6 units between lines instead of 8.
 
 In addition to saving "paper", economy mode is useful for making circles more circular in
 ASCII art output and gives better results when printing QR code patterns.
@@ -73,6 +73,11 @@ obtain information used to construct the output file names. The file names are o
 formed from the user name, user hash, job sequence number, date and time separated by periods.
 
 If psuprinter is interrupted with ctrl-C, it will exit cleanly.
+
+The NOS host should be up and ready to accept connections when psuprinter is started.
+If this is not the case, psuprinter will wait and/or exit with an informative message.
+
+If the NOS host is shut down, psuprinter will exit.
 
 ## NOS considerations
 
